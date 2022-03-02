@@ -1,0 +1,129 @@
+---
+title: "Tweets EY"
+Responsável: Gyo123
+---
+
+
+```{r}
+##Bibliotecas necessárias 
+install.packages("rtweet")
+install.packages("tm")
+install.packages("wordcloud")
+install.packages("tm")
+install.packages("fpc")
+install.packages("ggplot2")
+install.packages("googleVis")
+
+```
+
+```{r}
+#Carregando as bibliotecas(libraries)
+
+library(rtweet)
+library(wordcloud)
+library(fpc)
+library(tm)
+library(RColorBrewer)
+library(cluster)
+library(googleVis)
+library(ggplot2)
+```
+
+```{r}
+#Carregando os tweets
+
+ey_tweets <- search_tweets(
+  "#ernst&young", n = 18000, include_rts = FALSE, lang = "en"
+)
+```
+
+
+```{r}
+ey_tweets %>% 
+  ts_plot("1 hours") + 
+  ggplot2::theme_minimal() +
+  ggplot2::theme(plot.title = ggplot2::element_text(face = "bold")) +
+  ggplot2::labs(
+    x = NULL, y = NULL,
+    title = "Frequência de hashtag #ErnstYoung no Twitter",
+    subtitle = "Tweets a cada 1 hora\n",
+    caption = "\n Fonte: Dados coletados pela REST API via rtweet"
+  )
+```
+
+
+```{r}
+#Criando uma variável para a coleta
+
+ey_text <- ey_tweets$text
+```
+
+```{r}
+##Tratamento do Corpus, limpando stopwords e removendo pontuações
+ey_text_corpus <- VCorpus(VectorSource(ey_text))
+ey_text_corpus <- tm_map(ey_text_corpus,
+                         content_transformer(function(x) iconv(x, to='UTF-8', sub='byte')))
+ey_text_corpus <- tm_map(ey_text_corpus, content_transformer(tolower))
+ey_text_corpus <- tm_map(ey_text_corpus, removePunctuation)
+ey_text_corpus <- tm_map(ey_text_corpus, removeWords, stopwords("english"))
+ey_text_corpus <- tm_map(ey_text_corpus, removeWords, stopwords("portuguese"))
+```
+
+```{r}
+#Criando uma nuvem de palavras
+wordcloud(ey_text_corpus, min.freq = 2,max.words =80, colors = c("black", "#8B7500"))
+wordcloud(ey_text_corpus,min.freq = 2,max.words = 80,random.order = T, colors = c("black", "#8B7500"))
+```
+
+
+```{r}
+#Verificando quantidade de palavras e tweets
+ey_dtm <- DocumentTermMatrix(ey_text_corpus)
+ey_dtm
+```
+Percebemos que contém 247 tweets e 1.788 palavras
+
+```{r}
+#Criando variavel para a frequência (quantidade de tweets em determinada palavra)
+ey_freq <- colSums(as.matrix(ey_dtm))
+length(ey_freq)
+tail(ey_freq,10)
+```
+
+
+```{r}
+#Removendo termos pouco usados
+ey_dtms <- removeSparseTerms(ey_dtm, 0.98)
+ey_dtms
+```
+
+
+```{r}
+#Verificando os últimos termos mais usados
+ey_freq <- colSums(as.matrix(ey_dtms))
+tail(ey_freq,10)
+```
+
+```{r}
+#Criando uma nova nuvem de palavras
+wordcloud(names(ey_freq), ey_freq, min.freq = 2, max.words = 100, random.order = T, colors = "black")
+
+```
+
+
+```{r}
+#Removendo mais termos menos utilizados
+ey_dtms2 <- removeSparseTerms(ey_dtms, 0.87)
+ey_dtms2
+```
+```{r}
+#Criando um dendograma das hastag mais utilizadas
+distancia <- dist(t(ey_dtms2), method = "binary")
+dendograma <- hclust(d=distancia, method="complete")
+plot(dendograma, hang=-1, main = "Dendograma Tweets EY", xlab = "Distancia", ylab="altura")
+
+```
+
+
+
+
